@@ -1,6 +1,6 @@
 #include "renderer.h"
 
-void line(int x0, int y0, int x1, int y1, TGAImage& image, TGAColor color) {
+void line(int x0, int y0, int x1, int y1, TGAImage& image, const TGAColor& color) {
   bool steep = false;
   if (std::abs(x0 - x1) < std::abs(y0 - y1)) {
     std::swap(x0, y0);
@@ -32,4 +32,8 @@ void line(int x0, int y0, int x1, int y1, TGAImage& image, TGAColor color) {
       error2 -= dx * 2;
     }
   }
+}
+
+void line(Vec2i v0, Vec2i v1, TGAImage& image, const TGAColor& color) {
+  line(v0.u, v0.v, v1.u, v1.v, image, color);
 }
