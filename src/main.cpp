@@ -1,4 +1,3 @@
-#include "renderer.h"
 #include "tgaimage.h"
 #include "Model.h"
 
@@ -6,41 +5,43 @@ const TGAColor white = TGAColor(255, 255, 255, 255);
 const TGAColor red = TGAColor(255, 0, 0, 255);
 const TGAColor green = TGAColor(0, 255, 0, 255);
 
-void linesweep(Vec2i& p0, Vec2i& p1, Vec2i& q0, Vec2i& q1, int y, TGAImage& image, const TGAColor& color) {
-  // line p0 => p1
-  float rp = (float) (y - p0.y) / (float) (p1.y - p0.y);
-  auto vp = p0 + (p1 - p0) * rp;
+Vec3f barycentric(Vec2i t[3], Vec2i p) {
+  Vec3f v1 = Vec3f(t[2].x - t[0].x, t[1].x - t[0].x, t[0].x - p.x);
+  Vec3f v2 = Vec3f(t[2].y - t[0].y, t[1].y - t[0].y, t[0].y - p.y);
+  Vec3f u = v1 ^ v2;
 
-  // line q0 => q1
-  float rq = (float) (y - q0.y) / (float) (q1.y - q0.y);
-  auto vq = q0 + (q1 - q0) * rq;
+  if (std::abs(u.z) < 1) return Vec3f(-1, -1, -1);
 
-  // draw horizontal line
-  int x0 = std::min(vp.x, vq.x);
-  int x1 = std::max(vp.x, vq.x);
-
-  for (int x = x0; x <= x1; x++) {
-    image.set(x, y, color);
-  }
+  return Vec3f(1.0 - (u.x + u.y) / u.z, u.x / u.z, u.y / u.z);
 }
 
 void triangle(Vec2i t[3], TGAImage& image, const TGAColor& color) {
-  if (t[0].y > t[1].y) {
-    std::swap(t[0], t[1]);
-  }
-  if (t[1].y > t[2].y) {
-    std::swap(t[1], t[2]);
-  }
-  if (t[0].y > t[1].y) {
-    std::swap(t[0], t[1]);
+  // p_min and p_max represent the bounding box of the triangle
+  Vec2i p_min(image.get_width() - 1, image.get_height() - 1);
+  Vec2i p_max(0, 0);
+
+  for (int i = 0; i < 3; i++) {
+    p_min.x = std::min(p_min.x, t[i].x);
+    p_min.y = std::min(p_min.y, t[i].y);
+    p_max.x = std::max(p_max.x, t[i].x);
+    p_max.y = std::max(p_max.y, t[i].y);
   }
 
-  for (int y = t[0].y; y <= t[1].y; y++) {
-    linesweep(t[0], t[1], t[0], t[2], y, image, color);
-  }
+  // Limits to image region
+  p_min.x = std::max(p_min.x, 0);
+  p_min.y = std::max(p_min.y, 0);
+  p_max.x = std::min(p_max.x, image.get_width() - 1);
+  p_max.y = std::min(p_max.y, image.get_height() - 1);
 
-  for (int y = t[1].y; y <= t[2].y; y++) {
-    linesweep(t[1], t[2], t[0], t[2], y, image, color);
+  for (int y = p_min.y; y <= p_max.y; y++) {
+    for (int x = p_min.x; x <= p_max.x; x++) {
+      // Check if (x, y) is on the triangle
+      Vec2i p(x, y);
+      auto bc = barycentric(t, p);
+      if (bc.x < 0 || bc.y < 0 || bc.z < 0) continue;
+
+      image.set(x, y, color);
+    }
   }
 }
 
