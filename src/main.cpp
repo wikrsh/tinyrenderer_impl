@@ -2,22 +2,35 @@
 #include "tgaimage.h"
 #include "Model.h"
 
-const TGAColor white = TGAColor(255, 255, 255, 255);
-const TGAColor red = TGAColor(255, 0, 0, 255);
-const TGAColor green = TGAColor(0, 255, 0, 255);
-
 int main() {
-  const int width = 200;
-  const int height = 200;
+  const int width = 400;
+  const int height = 400;
   TGAImage image(width, height, TGAImage::RGB);
 
-  Vec2i t0[3] = {Vec2i(10, 70), Vec2i(50, 160), Vec2i(70, 80)};
-  Vec2i t1[3] = {Vec2i(180, 50), Vec2i(150, 1), Vec2i(70, 180)};
-  Vec2i t2[3] = {Vec2i(180, 150), Vec2i(120, 160), Vec2i(130, 180)};
+  Model model("../src/obj/african_head.obj");
 
-  triangle(t0, image, red);
-  triangle(t1, image, white);
-  triangle(t2, image, green);
+  Vec3f light_dir(0, 0, -1);
+  light_dir.normalize();
+
+  for (int i = 0; i < model.nfaces(); i++) {
+    auto face = model.face(i);
+
+    Vec2i screen_coords[3];
+    Vec3f world_coords[3];
+    for (int j = 0; j < 3; j++) {
+      Vec3f v = model.vert(face[j]);
+      screen_coords[j] = Vec2i((v.x + 1.0) * width / 2.0, (v.y + 1.0) * height / 2.0);
+      world_coords[j] = v;
+    }
+
+    Vec3f n = (world_coords[2] - world_coords[0]) ^ (world_coords[1] - world_coords[0]);
+    n.normalize();
+
+    auto intensity = n * light_dir;
+    if (intensity > 0) {
+      triangle(screen_coords, image, TGAColor(intensity * 255, intensity * 255, intensity * 255, 255));
+    }
+  }
 
   image.flip_vertically();
   image.write_tga_file("output.tga");
